@@ -1,0 +1,162 @@
+﻿@page "/Entradas/Edit/{EntradaId:int}"
+@using GestionEntradasInventario.Models
+@using GestionEntradasInventario.Services
+@inject EntradasService entradasService
+@inject NavigationManager navigationManager
+@rendermode InteractiveServer
+
+<PageTitle>Modificar Entrada</PageTitle>
+
+<EditForm Model="@Entrada" OnValidSubmit="Modificar">
+    <DataAnnotationsValidator />
+
+    <div class="container">
+        <div class="card shadow-lg">
+            <div class="card-header text-center">
+                <h5 class="card-title">Modificar Entrada</h5>
+            </div>
+
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <label class="form-label"><strong>Fecha</strong></label>
+                        <InputDate class="form-control" @bind-Value="Entrada.Fecha" />
+                    </div>
+                    <div class="col-md-8">
+                        <label class="form-label"><strong>Concepto</strong></label>
+                        <InputText class="form-control" @bind-Value="Entrada.Concepto" />
+                    </div>
+                </div>
+
+                <div class="border border-success p-3 mt-3">
+                    <h6 class="mb-3">Detalle de Huacales</h6>
+                    <div class="row g-2 align-items-end mb-3">
+                        <div class="col-md-5">
+                            <label class="form-label">Seleccione:</label>
+                            <InputSelect class="form-select" @bind-Value="Detalle.ProductoId" @onchange="ActualizarCosto">
+                                <option value="0" disabled>-- Seleccione un tipo de huacal --</option>
+                                @foreach (var item in ListaProductos)
+                                {
+                                    <option value="@item.ProductoId">@item.Descripcion (Existencia: @item.Existencia)</option>
+                                }
+                            </InputSelect>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Cantidad:</label>
+                            <InputNumber class="form-control" @bind-Value="Detalle.Cantidad" />
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Precio:</label>
+                            <InputNumber class="form-control" @bind-Value="Detalle.Costo" />
+                        </div>
+                        <div class="col-md-2">
+                            <button type="button" class="btn btn-outline-success w-100" @onclick="AgregarDetalle">
+                                <i class="bi bi-plus"></i> Agregar
+                            </button>
+                        </div>
+                    </div>
+
+                    <table class="table table-bordered table-striped mt-3">
+                        <thead class="table-light text-center">
+                            <tr>
+                                <th>Detalle ID</th>
+                                <th>Tipo Huacal</th>
+                                <th>Cantidad</th>
+                                <th>Precio unitario</th>
+                                <th>Eliminar</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var item in Entrada.EntradasDetalle)
+                            {
+                                var producto = ListaProductos.FirstOrDefault(p => p.ProductoId == item.ProductoId);
+                                <tr class="text-center">
+                                    <td>@item.DetalleId</td>
+                                    <td>@producto?.Descripcion</td>
+                                    <td>@item.Cantidad</td>
+                                    <td>@item.Costo.ToString("N2")</td>
+                                    <td>
+                                        <button type="button" class="btn btn-danger btn-sm bi bi-trash" @onclick="() => EliminarDetalle(item)"></button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="row mt-3">
+                    <div class="col-md-12 text-end">
+                        <p><strong>Total:</strong> @Entrada.Total.ToString("N2")</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card-footer text-center">
+                <a href="/Entradas/Index" class="btn btn-secondary">
+                    <i class="bi bi-arrow-left"></i> Volver
+                </a>
+                <button type="submit" class="btn btn-primary ms-2">
+                    <i class="bi bi-floppy"></i> Modificar
+                </button>
+                <button type="button" class="btn btn-danger ms-2" @onclick="Eliminar">
+                    <i class="bi bi-trash"></i> Eliminar
+                </button>
+            </div>
+        </div>
+    </div>
+</EditForm>
+
+@code {
+    [Parameter] public int EntradaId { get; set; }
+    private Entradas Entrada { get; set; } = new();
+    private EntradasDetalle Detalle { get; set; } = new();
+    private List<Producto> ListaProductos { get; set; } = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        Entrada = await entradasService.Buscar(EntradaId) ?? new Entradas();
+        ListaProductos = await entradasService.ListarProductos();
+    }
+
+    private void ActualizarCosto(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int id))
+        {
+            var p = ListaProductos.FirstOrDefault(x => x.ProductoId == id);
+            if (p != null) Detalle.Costo = p.Costo;
+        }
+    }
+
+    private void AgregarDetalle()
+    {
+        if (Detalle.ProductoId == 0 || Detalle.Cantidad <= 0) return;
+        Entrada.EntradasDetalle.Add(new EntradasDetalle
+        {
+            ProductoId = Detalle.ProductoId,
+            Cantidad = Detalle.Cantidad,
+            Costo = Detalle.Costo
+        });
+        RecalcularTotal();
+        Detalle = new EntradasDetalle();
+    }
+
+    private void EliminarDetalle(EntradasDetalle item)
+    {
+        Entrada.EntradasDetalle.Remove(item);
+        RecalcularTotal();
+    }
+
+    private void RecalcularTotal() => Entrada.Total = Entrada.EntradasDetalle.Sum(d => d.Cantidad * d.Costo);
+
+    private async Task Modificar()
+    {
+        if (await entradasService.Guardar(Entrada))
+            navigationManager.NavigateTo("/Entradas/Index");
+    }
+
+    private async Task Eliminar()
+    {
+        if (await entradasService.Eliminar(Entrada.EntradaId))
+            navigationManager.NavigateTo("/Entradas/Index");
+    }
+}
