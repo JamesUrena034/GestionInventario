@@ -1,0 +1,98 @@
+﻿@page "/Productos/Index"
+@using GestionEntradasInventario.Models
+@using GestionEntradasInventario.Services
+@inject ProductosService productosService
+@rendermode InteractiveServer
+
+<PageTitle>Consulta de Productos</PageTitle>
+
+<div class="container">
+    <div class="card shadow-lg">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h1 class="card-title"><strong>Listado de Productos</strong></h1>
+            <a href="/Productos/Create" class="btn btn-primary bi bi-plus-square"> Crear</a>
+        </div>
+
+        <div class="card-body">
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label class="form-label"><strong>Buscar por Descripción o ID</strong></label>
+                    <div class="input-group">
+                        <InputText class="form-control" @bind-Value="Filtrar" placeholder="Ej: Huacal o 1" />
+                        <button class="btn btn-success bi bi-search" @onclick="Buscar"> Buscar</button>
+                        <button class="btn btn-secondary bi bi-arrow-clockwise" @onclick="Restablecer"></button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover align-middle">
+                    <thead class="table-light text-center">
+                        <tr>
+                            <th>ID</th>
+                            <th>Descripción</th>
+                            <th>Costo</th>
+                            <th>Precio</th>
+                            <th>Existencia</th>
+                            <th>Opciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var producto in ListaProductos)
+                        {
+                            <tr>
+                                <td class="text-center">@producto.ProductoId</td>
+                                <td>@producto.Descripcion</td>
+                                <td class="text-end">@producto.Costo.ToString("N2")</td>
+                                <td class="text-end">@producto.Precio.ToString("N2")</td>
+                                <td class="text-center">@producto.Existencia</td>
+                                <td class="text-center">
+                                    <a href="/Productos/Edit/@producto.ProductoId" class="btn btn-outline-primary bi bi-pencil-square"></a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card-footer">
+            <label><strong>Total de productos:</strong> @ListaProductos.Count</label>
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<Producto> ListaProductos { get; set; } = new();
+    private string Filtrar { get; set; } = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        ListaProductos = await productosService.GetList(p => p.ProductoId > 0);
+    }
+
+    private async Task Buscar()
+    {
+        if (string.IsNullOrWhiteSpace(Filtrar))
+        {
+            ListaProductos = await productosService.GetList(p => p.ProductoId > 0);
+        }
+        else
+        {
+            if (int.TryParse(Filtrar, out int id))
+            {
+                ListaProductos = await productosService.GetList(p => p.ProductoId == id);
+            }
+            else
+            {
+                ListaProductos = await productosService.GetList(p => p.Descripcion.ToLower().Contains(Filtrar.ToLower()));
+            }
+        }
+    }
+
+    private async Task Restablecer()
+    {
+        Filtrar = string.Empty;
+        ListaProductos = await productosService.GetList(p => p.ProductoId > 0);
+    }
+}
