@@ -1,0 +1,103 @@
+﻿@page "/Entradas/Index"
+@using GestionEntradasInventario.Models
+@using GestionEntradasInventario.Services
+@inject NavigationManager navigationManager
+@inject EntradasService entradasService
+@rendermode InteractiveServer
+
+<PageTitle>Consulta de Entradas</PageTitle>
+
+<div class="container">
+    <div class="card shadow-lg">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h1 class="card-title"><strong>Registro Entradas</strong></h1>
+            <a href="/Entradas/Create" class="btn btn-primary bi bi-plus-square"> Crear</a>
+        </div>
+
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-2">
+                    <label class="col-form-label"><strong>Desde:</strong></label>
+                    <InputDate class="form-control" @bind-Value="FechaDesde"></InputDate>
+                </div>
+
+                <div class="col-md-2">
+                    <label class="col-form-label"><strong>Hasta:</strong></label>
+                    <InputDate class="form-control" @bind-Value="FechaHasta"></InputDate>
+                </div>
+
+                <div class="col-md-3">
+                    <label class="form-label"><strong>Filtrar</strong></label>
+                    <InputText class="form-control" @bind-Value="Filtrar"></InputText>
+                </div>
+
+                <div class="col-md-3 d-flex align-items-end">
+                    <button class="btn btn-success bi bi-search me-2" @onclick="Buscar"> Buscar</button>
+                    <button class="btn btn-secondary bi bi-arrow-clockwise" @onclick="Restablecer"></button>
+                </div>
+            </div>
+
+            <div class="table-responsive mt-4">
+                <table class="table table-bordered table-hover align-middle">
+                    <thead class="table-light text-center">
+                        <tr>
+                            <th>EntradaId</th>
+                            <th>Fecha</th>
+                            <th>Descripcion</th>
+                            <th>Total</th>
+                            <th>Opciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var entrada in ListaEntradas)
+                        {
+                            <tr>
+                                <td>@entrada.EntradaId</td>
+                                <td>@entrada.Fecha.ToShortDateString()</td>
+                                <td>@entrada.Concepto</td>
+                                <td>@entrada.Total.ToString("N2")</td>
+                                <td class="text-center">
+                                    <a href="/Entradas/Edit/@entrada.EntradaId" class="btn btn-outline-primary bi bi-pencil-square"></a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card-footer d-flex justify-content-between">
+            <label><strong>Total de entradas:</strong> @ListaEntradas.Count</label>
+            <label><strong>Total general:</strong> @ListaEntradas.Sum(e => e.Total).ToString("N2")</label>
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<Entradas> ListaEntradas { get; set; } = new();
+    private DateTime? FechaDesde { get; set; }
+    private DateTime? FechaHasta { get; set; }
+    private string Filtrar { get; set; } = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        ListaEntradas = await entradasService.GetList(e => e.EntradaId > 0);
+    }
+
+    private async Task Buscar()
+    {
+        ListaEntradas = await entradasService.GetList(e =>
+            (string.IsNullOrWhiteSpace(Filtrar) || e.Concepto.ToLower().Contains(Filtrar.ToLower())) &&
+            (FechaDesde == null || e.Fecha.Date >= FechaDesde.Value.Date) &&
+            (FechaHasta == null || e.Fecha.Date <= FechaHasta.Value.Date)
+        );
+    }
+
+    private async Task Restablecer()
+    {
+        FechaDesde = null;
+        FechaHasta = null;
+        Filtrar = string.Empty;
+        ListaEntradas = await entradasService.GetList(e => e.EntradaId > 0);
+    }
+}
