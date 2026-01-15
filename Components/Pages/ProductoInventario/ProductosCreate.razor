@@ -1,0 +1,68 @@
+﻿@page "/Productos/Create"
+@using GestionEntradasInventario.Models
+@using GestionEntradasInventario.Services
+@inject ProductosService productosService
+@inject NavigationManager navigationManager
+@rendermode InteractiveServer
+
+<PageTitle>Registrar Producto</PageTitle>
+
+<EditForm Model="@Producto" OnValidSubmit="Guardar">
+    <DataAnnotationsValidator />
+
+    <div class="container">
+        <div class="card shadow-lg">
+            <div class="card-header text-center">
+                <h5 class="card-title">Registro de Producto</h5>
+            </div>
+
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label"><strong>Descripción</strong></label>
+                    <InputText class="form-control" @bind-Value="Producto.Descripcion" />
+                    <ValidationMessage For="@(() => Producto.Descripcion)" />
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label"><strong>Costo</strong></label>
+                        <InputNumber class="form-control" @bind-Value="Producto.Costo" />
+                        <ValidationMessage For="@(() => Producto.Costo)" />
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label"><strong>Precio</strong></label>
+                        <InputNumber class="form-control" @bind-Value="Producto.Precio" />
+                        <ValidationMessage For="@(() => Producto.Precio)" />
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label"><strong>Existencia</strong></label>
+                        <InputNumber class="form-control" @bind-Value="Producto.Existencia" readonly />
+                    </div>
+                </div>
+            </div>
+
+            <div class="card-footer text-center">
+                <a href="/Productos/Index" class="btn btn-secondary">
+                    <i class="bi bi-arrow-left"></i> Volver
+                </a>
+                <button type="submit" class="btn btn-primary ms-2">
+                    <i class="bi bi-floppy"></i> Guardar
+                </button>
+            </div>
+        </div>
+    </div>
+</EditForm>
+
+@code {
+    public Producto Producto { get; set; } = new();
+
+    private async Task Guardar()
+    {
+        if (await productosService.Guardar(Producto))
+            navigationManager.NavigateTo("/Productos/Index");
+    }
+}
